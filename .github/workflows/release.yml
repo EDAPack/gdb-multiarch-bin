@@ -1,0 +1,161 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      gdb_version:
+        description: 'GDB version to build (e.g., 15.2)'
+        required: true
+        type: string
+
+jobs:
+    version-check:
+        runs-on: 'ubuntu-latest'
+        outputs:
+            gdb_version: ${{ steps.check.outputs.gdb_version }}
+            rls_version: ${{ steps.check.outputs.rls_version }}
+        steps:
+        - name: fetch-version
+          id: check
+          run: |
+            gdb_version="${{ inputs.gdb_version }}"
+            
+            # Validate the version/tag exists in the GDB repo
+            tag_name="gdb-${gdb_version}-release"
+            tag_check=$(curl -s -L \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                -o /dev/null -w "%{http_code}" \
+                "https://api.github.com/repos/bminor/binutils-gdb/git/refs/tags/${tag_name}")
+            
+            if [ "$tag_check" != "200" ]; then
+                echo "Error: Tag '${tag_name}' not found in bminor/binutils-gdb repository"
+                exit 1
+            fi
+            
+            rls_version="${gdb_version}"
+
+            echo "gdb_version: ${gdb_version}"
+            echo "rls_version: ${rls_version}"
+
+            echo "gdb_version=${gdb_version}" >> ${GITHUB_OUTPUT}
+            echo "rls_version=${rls_version}" >> ${GITHUB_OUTPUT}
+
+            cat ${GITHUB_OUTPUT}
+        - name: print
+          run: |
+            echo "gdb_version: ${{ steps.check.outputs.gdb_version }}"
+            echo "rls_version: ${{ steps.check.outputs.rls_version }}"
+
+
+    build-linux-x86_64:
+        runs-on: 'ubuntu-latest'
+        needs: version-check
+        strategy:
+          matrix:
+            image: [manylinux2014_x86_64, manylinux_2_28_x86_64, manylinux_2_34_x86_64]
+        steps:
+            - uses: actions/checkout@v4
+            - name: print
+              run: |
+                echo "print"
+                echo "image: ${{ matrix.image }}"
+                echo "gdb_version: ${{ needs.version-check.outputs.gdb_version }}"
+                echo "rls_version: ${{ needs.version-check.outputs.rls_version }}"
+            - name: build
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                image: ${{ matrix.image }}
+                gdb_latest_rls: ${{ needs.version-check.outputs.gdb_version }}
+                rls_version: ${{ needs.version-check.outputs.rls_version }}
+              run: >
+                docker run --rm
+                --volume "$(pwd):/io"
+                --env gdb_latest_rls
+                --env rls_version
+                --env image
+                --workdir /io
+                quay.io/pypa/${{ matrix.image }}
+                /io/scripts/build.sh
+            - name: upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: "gdb-multiarch-${{ matrix.image }}"
+                path: "release/gdb-multiarch-${{ matrix.image }}-*.tar.gz"
+                if-no-files-found: error
+                retention-days: 7
+
+    build-linux-arm64:
+        runs-on: 'ubuntu-24.04-arm'
+        needs: version-check
+        strategy:
+          matrix:
+            image: [manylinux_2_28_aarch64, manylinux_2_34_aarch64]
+        steps:
+            - uses: actions/checkout@v4
+            - name: print
+              run: |
+                echo "print"
+                echo "image: ${{ matrix.image }}"
+                echo "gdb_version: ${{ needs.version-check.outputs.gdb_version }}"
+                echo "rls_version: ${{ needs.version-check.outputs.rls_version }}"
+            - name: build
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                image: ${{ matrix.image }}
+                gdb_latest_rls: ${{ needs.version-check.outputs.gdb_version }}
+                rls_version: ${{ needs.version-check.outputs.rls_version }}
+              run: >
+                docker run --rm
+                --volume "$(pwd):/io"
+                --env gdb_latest_rls
+                --env rls_version
+                --env image
+                --workdir /io
+                quay.io/pypa/${{ matrix.image }}
+                /io/scripts/build.sh
+            - name: upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: "gdb-multiarch-${{ matrix.image }}"
+                path: "release/gdb-multiarch-${{ matrix.image }}-*.tar.gz"
+                if-no-files-found: error
+                retention-days: 7
+
+    publish:
+        runs-on: 'ubuntu-latest'
+        needs: 
+        - build-linux-x86_64
+        - build-linux-arm64
+        - version-check
+        permissions:
+            contents: write
+        steps:
+        - name: Create Release
+          id: create_release
+          uses: actions/create-release@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            tag_name: "v${{ needs.version-check.outputs.rls_version }}"
+            release_name: "Release v${{ needs.version-check.outputs.rls_version }}"
+            body: |
+              Build of GDB ${{ needs.version-check.outputs.gdb_version }}
+              Multi-architecture support: x86_64, RISC-V
+              Version: ${{ needs.version-check.outputs.rls_version }}
+            draft: false
+            prerelease: false
+        - name: Download build artifacts
+          uses: actions/download-artifact@v4
+          with:
+            pattern: "gdb-multiarch-*"
+            path: release
+            merge-multiple: true
+
+        - name: Upload assets to release
+          uses: softprops/action-gh-release@v2
+          with:
+            tag_name: "v${{ needs.version-check.outputs.rls_version }}"
+            files: |
+              release/**/*.tar.gz
+            fail_on_unmatched_files: true
