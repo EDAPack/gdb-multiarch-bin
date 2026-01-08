@@ -123,15 +123,16 @@ echo "Configuring with targets: ${TARGET_LIST}"
 # Enable x86_64, i386, riscv32, riscv64, and xtensa (if available)
 # Disable Python for now to avoid python-devel dependency issues
 # Disable simulator to avoid cross-compilation issues
+# Disable TUI to avoid ncurses compatibility issues in older manylinux
 ${root}/gdb-src/gdb-${gdb_latest_rls}/configure \
     --prefix=${root}/release/gdb \
     --enable-targets=${TARGET_LIST} \
     --disable-werror \
     --without-python \
     --disable-sim \
+    --disable-tui \
     --with-expat \
     --with-lzma \
-    --enable-tui \
     --with-system-readline=no \
     --with-gmp \
     --with-mpfr
