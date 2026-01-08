@@ -16,13 +16,11 @@ jobs:
         - name: fetch-version
           id: check
           run: |
-            # Get GDB version from latest release tag
-            gdb_latest_rls=$(curl -s -L \
-                -H "Accept: application/vnd.github+json" \
-                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                https://api.github.com/repos/bminor/binutils-gdb/tags | \
-                jq -r '.[0].name' | sed -e 's/^gdb-//' -e 's/-release$//')
+            # Get GDB version from GNU FTP server
+            gdb_latest_rls=$(curl -s https://ftp.gnu.org/gnu/gdb/ | \
+                grep -o 'gdb-[0-9][0-9.]*\.tar' | \
+                sed 's/\.tar.*//' | sed 's/gdb-//' | \
+                sort -Vu | tail -1)
             
             echo "gdb_latest_rls: ${gdb_latest_rls}"
 

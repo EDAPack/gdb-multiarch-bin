@@ -19,17 +19,12 @@ jobs:
           run: |
             gdb_version="${{ inputs.gdb_version }}"
             
-            # Validate the version/tag exists in the GDB repo
-            tag_name="gdb-${gdb_version}-release"
-            tag_check=$(curl -s -L \
-                -H "Accept: application/vnd.github+json" \
-                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                -o /dev/null -w "%{http_code}" \
-                "https://api.github.com/repos/bminor/binutils-gdb/git/refs/tags/${tag_name}")
+            # Validate the version exists on GNU FTP server
+            version_check=$(curl -s https://ftp.gnu.org/gnu/gdb/ | \
+                grep -o "gdb-${gdb_version}\.tar" | wc -l)
             
-            if [ "$tag_check" != "200" ]; then
-                echo "Error: Tag '${tag_name}' not found in bminor/binutils-gdb repository"
+            if [ "$version_check" = "0" ]; then
+                echo "Error: GDB version '${gdb_version}' not found on GNU FTP server"
                 exit 1
             fi
             
