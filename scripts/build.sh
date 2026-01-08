@@ -80,54 +80,23 @@ fi
 cd gdb-${gdb_latest_rls}
 
 #********************************************************************
-#* Check for Tensilica support
-#********************************************************************
-echo "Checking for Tensilica (xtensa) support in GDB..."
-if test -d "bfd" && grep -r "xtensa" bfd/config.bfd > /dev/null 2>&1; then
-    echo "Tensilica/Xtensa support found in GDB source"
-    # Check which xtensa targets are actually supported
-    XTENSA_TARGETS=""
-    for target in xtensa-*-elf xtensa-*-linux; do
-        if grep -q "${target}" bfd/config.bfd; then
-            if test -z "${XTENSA_TARGETS}"; then
-                XTENSA_TARGETS="${target}"
-            else
-                XTENSA_TARGETS="${XTENSA_TARGETS},${target}"
-            fi
-        fi
-    done
-    if test -n "${XTENSA_TARGETS}"; then
-        echo "Found xtensa targets: ${XTENSA_TARGETS}"
-    fi
-else
-    echo "Tensilica/Xtensa support not found, building without it"
-    XTENSA_TARGETS=""
-fi
-
-#********************************************************************
 #* Configure GDB
 #********************************************************************
 echo "Configuring GDB..."
 mkdir -p ${root}/build
 cd ${root}/build
 
-# Build the target list
-TARGET_LIST="x86_64-linux-gnu,i386-linux-gnu,riscv32-unknown-elf,riscv64-unknown-elf"
-if test -n "${XTENSA_TARGETS}"; then
-    TARGET_LIST="${TARGET_LIST},${XTENSA_TARGETS}"
-fi
+echo "Configuring with --enable-targets=all for maximum architecture support"
 
-echo "Configuring with targets: ${TARGET_LIST}"
-
-# Configure GDB with multi-architecture support
-# Enable x86_64, i386, riscv32, riscv64, and xtensa (if available)
+# Configure GDB with all target architectures
+# This includes x86, ARM, RISC-V, MIPS, PowerPC, Xtensa, and many more
 # Disable Python for now to avoid python-devel dependency issues
 # Disable simulator to avoid cross-compilation issues
 # Disable TUI to avoid ncurses compatibility issues in older manylinux
 # Use system gmp/mpfr libraries
 ${root}/gdb-src/gdb-${gdb_latest_rls}/configure \
     --prefix=${root}/release/gdb \
-    --enable-targets=${TARGET_LIST} \
+    --enable-targets=all \
     --disable-werror \
     --without-python \
     --disable-sim \
