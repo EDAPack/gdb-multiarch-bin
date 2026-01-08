@@ -119,26 +119,14 @@ fi
 
 echo "Configuring with targets: ${TARGET_LIST}"
 
-# Check for usable Python
-PYTHON_CONFIG=""
-if command -v python3-config > /dev/null 2>&1; then
-    PYTHON_CONFIG="--with-python=python3"
-    echo "Python support enabled"
-elif test -f /usr/bin/python3 && /usr/bin/python3-config --help > /dev/null 2>&1; then
-    PYTHON_CONFIG="--with-python=/usr/bin/python3"
-    echo "Python support enabled with /usr/bin/python3"
-else
-    PYTHON_CONFIG="--without-python"
-    echo "Python support disabled (python-devel not available)"
-fi
-
 # Configure GDB with multi-architecture support
 # Enable x86_64, i386, riscv32, riscv64, and xtensa (if available)
+# Disable Python for now to avoid python-devel dependency issues
 ${root}/gdb-src/gdb-${gdb_latest_rls}/configure \
     --prefix=${root}/release/gdb \
     --enable-targets=${TARGET_LIST} \
     --disable-werror \
-    ${PYTHON_CONFIG} \
+    --without-python \
     --with-expat \
     --with-lzma \
     --enable-tui \
