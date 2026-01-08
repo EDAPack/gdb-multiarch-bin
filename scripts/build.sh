@@ -122,11 +122,13 @@ echo "Configuring with targets: ${TARGET_LIST}"
 # Configure GDB with multi-architecture support
 # Enable x86_64, i386, riscv32, riscv64, and xtensa (if available)
 # Disable Python for now to avoid python-devel dependency issues
+# Disable simulator to avoid cross-compilation issues
 ${root}/gdb-src/gdb-${gdb_latest_rls}/configure \
     --prefix=${root}/release/gdb \
     --enable-targets=${TARGET_LIST} \
     --disable-werror \
     --without-python \
+    --disable-sim \
     --with-expat \
     --with-lzma \
     --enable-tui \
