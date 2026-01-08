@@ -124,6 +124,7 @@ echo "Configuring with targets: ${TARGET_LIST}"
 # Disable Python for now to avoid python-devel dependency issues
 # Disable simulator to avoid cross-compilation issues
 # Disable TUI to avoid ncurses compatibility issues in older manylinux
+# Use system gmp/mpfr libraries
 ${root}/gdb-src/gdb-${gdb_latest_rls}/configure \
     --prefix=${root}/release/gdb \
     --enable-targets=${TARGET_LIST} \
@@ -133,9 +134,7 @@ ${root}/gdb-src/gdb-${gdb_latest_rls}/configure \
     --disable-tui \
     --with-expat \
     --with-lzma \
-    --with-system-readline=no \
-    --with-gmp \
-    --with-mpfr
+    --with-system-readline=no
 
 if test $? -ne 0; then
     echo "Configure failed"
