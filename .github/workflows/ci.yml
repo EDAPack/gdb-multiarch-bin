@@ -16,11 +16,26 @@ jobs:
         - name: fetch-version
           id: check
           run: |
-            # Get GDB version from GNU FTP server
-            gdb_latest_rls=$(curl -s https://ftp.gnu.org/gnu/gdb/ | \
-                grep -o 'gdb-[0-9][0-9.]*\.tar' | \
-                sed 's/\.tar.*//' | sed 's/gdb-//' | \
-                sort -Vu | tail -1)
+            # Get GDB version from GNU FTP server with timeout
+            # Try up to 3 times with shorter timeout
+            for i in 1 2 3; do
+              gdb_latest_rls=$(timeout 30 curl -s https://ftp.gnu.org/gnu/gdb/ 2>/dev/null | \
+                  grep -o 'gdb-[0-9][0-9.]*\.tar' | \
+                  sed 's/\.tar.*//' | sed 's/gdb-//' | \
+                  sort -Vu | tail -1)
+              
+              if [ -n "$gdb_latest_rls" ]; then
+                break
+              fi
+              echo "Attempt $i failed, retrying..."
+              sleep 5
+            done
+            
+            # Fallback to known version if fetch fails
+            if [ -z "$gdb_latest_rls" ]; then
+              echo "Warning: Could not fetch latest version, using default"
+              gdb_latest_rls="15.2"
+            fi
             
             echo "gdb_latest_rls: ${gdb_latest_rls}"
 
