@@ -75,10 +75,23 @@ cd gdb-${gdb_latest_rls}
 echo "Checking for Tensilica (xtensa) support in GDB..."
 if test -d "bfd" && grep -r "xtensa" bfd/config.bfd > /dev/null 2>&1; then
     echo "Tensilica/Xtensa support found in GDB source"
-    ENABLE_XTENSA="--enable-targets=xtensa-esp32-elf,xtensa-esp32s2-elf,xtensa-esp32s3-elf"
+    # Check which xtensa targets are actually supported
+    XTENSA_TARGETS=""
+    for target in xtensa-*-elf xtensa-*-linux; do
+        if grep -q "${target}" bfd/config.bfd; then
+            if test -z "${XTENSA_TARGETS}"; then
+                XTENSA_TARGETS="${target}"
+            else
+                XTENSA_TARGETS="${XTENSA_TARGETS},${target}"
+            fi
+        fi
+    done
+    if test -n "${XTENSA_TARGETS}"; then
+        echo "Found xtensa targets: ${XTENSA_TARGETS}"
+    fi
 else
     echo "Tensilica/Xtensa support not found, building without it"
-    ENABLE_XTENSA=""
+    XTENSA_TARGETS=""
 fi
 
 #********************************************************************
@@ -88,11 +101,19 @@ echo "Configuring GDB..."
 mkdir -p ${root}/build
 cd ${root}/build
 
+# Build the target list
+TARGET_LIST="x86_64-linux-gnu,i386-linux-gnu,riscv32-unknown-elf,riscv64-unknown-elf"
+if test -n "${XTENSA_TARGETS}"; then
+    TARGET_LIST="${TARGET_LIST},${XTENSA_TARGETS}"
+fi
+
+echo "Configuring with targets: ${TARGET_LIST}"
+
 # Configure GDB with multi-architecture support
 # Enable x86_64, i386, riscv32, riscv64, and xtensa (if available)
 ${root}/gdb-src/gdb-${gdb_latest_rls}/configure \
     --prefix=${root}/release/gdb \
-    --enable-targets=x86_64-linux-gnu,i386-linux-gnu,riscv32-unknown-elf,riscv64-unknown-elf${ENABLE_XTENSA:+,$ENABLE_XTENSA} \
+    --enable-targets=${TARGET_LIST} \
     --disable-werror \
     --with-python=python3 \
     --with-expat \
