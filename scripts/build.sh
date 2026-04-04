@@ -145,6 +145,7 @@ rm -rf gdb/share/man
 #********************************************************************
 #* Create release tarball
 #********************************************************************
+cp ${root}/scripts/export.envrc gdb/
 echo "Creating release tarball..."
 tar czf gdb-multiarch-${rls_plat}-${rls_version}.tar.gz gdb
 if test $? -ne 0; then
