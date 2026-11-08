@@ -25,7 +25,14 @@ if test $(uname -s) = "Linux"; then
     fi
     
     export PATH=/opt/python/cp312-cp312/bin:$PATH
-    
+
+    # GDB 18 uses PTRACE_{GET,SET}_THREAD_AREA from <sys/ptrace.h>, which
+    # older glibc (2.17, manylinux2014) only defines in <asm/ptrace-abi.h>
+    if test $(uname -m) = "x86_64" && \
+        ! grep -q PTRACE_GET_THREAD_AREA /usr/include/sys/ptrace.h; then
+        export CPPFLAGS="${CPPFLAGS} -DPTRACE_GET_THREAD_AREA=25 -DPTRACE_SET_THREAD_AREA=26"
+    fi
+
     rls_plat=${image}
 fi
 
